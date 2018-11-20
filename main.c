@@ -124,6 +124,37 @@ void fb_close()
     close(fb);
 }
 
+
+struct mdp_rect {
+	unsigned x;
+	unsigned y;
+	unsigned w;
+	unsigned h;
+};
+
+struct mdp_display_commit {
+	unsigned flags;
+	unsigned wait_for_finish;
+	struct fb_var_screeninfo var;
+	struct mdp_rect roi;
+};
+
+
+void msmfb_display_commit(int fd)
+{
+#define MSMFB_IOCTL_MAGIC 'm'
+#define MSMFB_DISPLAY_COMMIT _IOW(MSMFB_IOCTL_MAGIC, 164, struct mdp_display_commit)
+#define MDP_DISPLAY_COMMIT_OVERLAY	1
+
+    struct mdp_display_commit info;
+    memset(&info, 0, sizeof(struct mdp_display_commit));
+    info.flags = MDP_DISPLAY_COMMIT_OVERLAY;
+    
+    if (ioctl(fd, MSMFB_DISPLAY_COMMIT, &info) == -1) {
+        perror("Failed to call ioctl MSMFB_DISPLAY_COMMIT");
+    }
+}
+
 void fb_drawsomething()
 {
     int i = 0;
@@ -133,6 +164,7 @@ void fb_drawsomething()
         fb_mem[i + 2] = 0x08;
         fb_mem[i + 3] = 0xA0;
     }
+    msmfb_display_commit(fb);
 }
 
 int main(int argc, char *argv[])
