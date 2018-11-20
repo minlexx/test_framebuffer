@@ -20,6 +20,8 @@
 #include <linux/vt.h>
 #include <linux/fb.h>
 
+#include <FreeImage.h>
+
 
 static int                        fb =  0;
 static struct fb_fix_screeninfo   fb_fix;
@@ -179,18 +181,58 @@ void fb_drawsomething()
     msmfb_display_commit(fb);
 }
 
+void displayImage(FREE_IMAGE_FORMAT fmt, char *path)
+{
+    FIBITMAP *img = FreeImage_Load(fmt, path, 0);
+    if (!img) {
+        fprintf(stderr, "FreeImage failed to load: %s\n", path);
+        return;
+    }
+    
+    unsigned img_bpp = FreeImage_GetBPP(img);
+    
+    if (img_bpp != fb_var.bits_per_pixel) {
+        fprintf(stderr, "Image file BPP (%d) != FB BPP (%d)\n",
+            img_bpp, fb_var.bits_per_pixel);
+        FreeImage_Unload(img);
+        return;
+    }
+    
+    unsigned img_w = FreeImage_GetWidth(img);
+    unsigned img_h = FreeImage_GetHeight(img);
+    
+    if (img_w > fb_var.xres) img_w = fb_var.xres;
+    if (img_h > fb_var.yres) img_h = fb_var.yres;
+    
+    unsigned char *dest_scanline = fb_mem; // initial destination
+    for(int y = 0; y < img_h; y++) {
+        unsigned char *pixels = FreeImage_GetScanLine(img, y);
+        memcpy(dest_scanline, pixels, img_w * img_bpp / 8);
+        dest_scanline += fb_fix.line_length; /* goto next line */
+    }
+    
+    FreeImage_Unload(img);
+    
+    msmfb_display_commit(fb);
+}
+
 int main(int argc, char *argv[])
 {
     if (fb_init() == -1) {
         fprintf(stderr, "Failed to init framebuffer!\n");
         return 1;
     }
+    FreeImage_Initialise(FALSE);
     
     fb_drawsomething();
     
     printf("Sleeping for 10s...\n");
     sleep(10);
     
+    displayImage(FIF_PNG, "/data/logo.png");
+    sleep(10);
+    
+    FreeImage_DeInitialise();
     fb_close();
     return 0;
 }
