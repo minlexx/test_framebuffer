@@ -14,6 +14,7 @@
 #include <sys/mman.h>
 #include <sys/wait.h>
 #include <sys/stat.h>
+#include <time.h>
 
 #include <linux/kd.h>
 #include <linux/vt.h>
@@ -61,10 +62,13 @@ int fb_init()
     fprintf(stderr, "Fix: visual = %d\n", fb_fix.visual);
     fprintf(stderr, "Fix: accel = %d\n", fb_fix.accel);
     fprintf(stderr, "Fix: cap = %d\n", fb_fix.capabilities);
+    fprintf(stderr, "Fix: pan steps: x, y: %d, %d\n", fb_fix.xpanstep, fb_fix.ypanstep);
+    fprintf(stderr, "Fix: ywrap step: %d\n", fb_fix.ywrapstep);
+    fprintf(stderr, "Fix: line_length, bytes: %d\n", fb_fix.line_length);
     
     fprintf(stderr, "Var: resolution: %d x %d\n", fb_var.xres, fb_var.yres);
+    fprintf(stderr, "Var: virt. resolution: %d x %d\n", fb_var.xres_virtual, fb_var.yres_virtual);
     fprintf(stderr, "Var: offsets x, y: %d, %d\n", fb_var.xoffset, fb_var.yoffset);
-    fprintf(stderr, "Fix: pan steps: x, y: %d, %d\n", fb_fix.xpanstep, fb_fix.ypanstep);
     fprintf(stderr, "Var: vmode = %d\n", fb_var.vmode);
     fprintf(stderr, "Var: bpp = %d\n", fb_var.bits_per_pixel);
     fprintf(stderr, "var: RGBA lengths: r, g, b, a: %d, %d, %d, %d\n", fb_var.red.length, fb_var.green.length, fb_var.blue.length, fb_var.transp.length);
@@ -109,6 +113,13 @@ int fb_init()
             perror("ioctl FBIOPAN_DISPLAY");
             return -1;
         }
+    }
+    
+    fb_var.activate = FB_ACTIVATE_NOW | FB_ACTIVATE_ALL | FB_ACTIVATE_FORCE;
+    if (ioctl(fb, FBIOPUT_VSCREENINFO, &fb_var) < 0) {
+        perror("ioctl FBIOPUT_VSCREENINFO failed");
+    } else {
+        fprintf(stderr, "activateDisplay OK\n");
     }
     
     return 0;
@@ -157,12 +168,13 @@ void msmfb_display_commit(int fd)
 
 void fb_drawsomething()
 {
+    srand(time(NULL));
     int i = 0;
-    for (i = 0; i < 700; i += 4 ) {
-        fb_mem[i + 0] = 0x80;
-        fb_mem[i + 1] = 0xA0;
-        fb_mem[i + 2] = 0x08;
-        fb_mem[i + 3] = 0xA0;
+    for (i = 0; i < 300000; i += 4 ) {
+        fb_mem[i + 0] = 0xFF;  // R
+        fb_mem[i + 1] = 0x00;  // G
+        fb_mem[i + 2] = 0x00;  // B
+        fb_mem[i + 3] = 0xFF;  // A (ignored)
     }
     msmfb_display_commit(fb);
 }
