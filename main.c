@@ -124,12 +124,28 @@ void fb_close()
     close(fb);
 }
 
+void fb_drawsomething()
+{
+    int i = 0;
+    for (i = 0; i < 700; i += 4 ) {
+        fb_mem[i + 0] = 0x80;
+        fb_mem[i + 1] = 0xA0;
+        fb_mem[i + 2] = 0x08;
+        fb_mem[i + 3] = 0xA0;
+    }
+}
+
 int main(int argc, char *argv[])
 {
     if (fb_init() == -1) {
         fprintf(stderr, "Failed to init framebuffer!\n");
         return 1;
     }
+    
+    fb_drawsomething();
+    
+    printf("Sleeping for 10s...\n");
+    sleep(10);
     
     fb_close();
     return 0;
